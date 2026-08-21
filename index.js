@@ -20,6 +20,11 @@ const artistCommand = require("./commands/artist");
 // ================= VOICE 247 =================
 const VOICE_CHANNEL_ID = "1528276072012058775";
 
+// ================= DAILY BOX REMINDER =================
+const BOX_CHANNEL_ID = "1528260968096858323";
+
+let lastBoxReminderDate = null;
+
 // ================= ARTIST ALIAS =================
 const ARTIST_ALIAS = {
   rv: "red velvet",
@@ -138,6 +143,59 @@ async function connectTo247Voice() {
   }
 }
 
+// ================= DAILY BOX REMINDER FUNCTION =================
+async function sendDailyBoxReminder() {
+  try {
+    const now = new Date();
+
+    const vietnamTime = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(now);
+
+    const get = (type) =>
+      vietnamTime.find(part => part.type === type)?.value;
+
+    const date = `${get("year")}-${get("month")}-${get("day")}`;
+    const hour = get("hour");
+    const minute = get("minute");
+
+    // Chỉ gửi đúng 22:00 giờ Việt Nam
+    if (hour !== "22" || minute !== "00") return;
+
+    // Không gửi 2 lần trong cùng một ngày
+    if (lastBoxReminderDate === date) return;
+
+    const channel = await client.channels.fetch(BOX_CHANNEL_ID);
+
+    if (!channel || !channel.isTextBased()) {
+      console.log("❌ Không tìm thấy channel reminder box!");
+      return;
+    }
+
+    await channel.send({
+      content:
+        "@everyone loa loa loa Hó ơi vô mở bõ với lụm kim cương bên ssm nè <a:wendyyy:1540231057079537706> ",
+
+      allowedMentions: {
+        parse: ["everyone"]
+      }
+    });
+
+    lastBoxReminderDate = date;
+
+    console.log(`🎁 Đã gửi reminder mở box ngày ${date}`);
+
+  } catch (error) {
+    console.error("❌ Lỗi Daily Box Reminder:", error);
+  }
+}
+
 // ================= COOLDOWN FUNCTION =================
 function checkCooldown(userId, message) {
   const now = Date.now();
@@ -231,6 +289,12 @@ client.once("ready", async () => {
 
   // Tự động vào phòng voice 247
   await connectTo247Voice();
+
+  // Kiểm tra reminder mỗi phút
+  setInterval(sendDailyBoxReminder, 60 * 1000);
+
+  // Kiểm tra ngay khi bot online
+  await sendDailyBoxReminder();
 });
 
 // ================= LOGIN =================
