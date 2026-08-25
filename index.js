@@ -16,6 +16,7 @@ const cardrecCommand = require("./commands/cardrec");
 const ftCommand = require("./commands/ft");
 const infoCommand = require("./commands/info");
 const artistCommand = require("./commands/artist");
+const birthdayCommand = require("./commands/birthday");
 
 // ================= VOICE 247 =================
 const VOICE_CHANNEL_ID = "1528276072012058775";
@@ -253,6 +254,11 @@ client.on("messageCreate", async (message) => {
   // 👇 CARDREC
   if (message.content.toLowerCase() === "h!cardrec") {
     return cardrecCommand(message);
+  }
+
+  // 👇 WANNIE HPBD
+  if (message.content.toLowerCase().startsWith("h!wanniehpbd")) {
+    return birthdayCommand(message);
   }
 
   // 👇 FT
