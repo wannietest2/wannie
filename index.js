@@ -65,6 +65,83 @@ const client = new Client({
     GatewayIntentBits.MessageContent
   ]
 });
+// ================= VOICE 247 =================
+async function connectTo247Voice() {
+  try {
+    const channel = await client.channels.fetch(VOICE_CHANNEL_ID);
+
+    if (!channel) {
+      console.log("❌ Không tìm thấy voice channel!");
+      return;
+    }
+
+    if (!channel.isVoiceBased()) {
+      console.log("❌ ID này không phải voice channel!");
+      return;
+    }
+
+    const connection = joinVoiceChannel({
+      channelId: channel.id,
+      guildId: channel.guild.id,
+      adapterCreator: channel.guild.voiceAdapterCreator,
+      selfDeaf: true,
+      selfMute: true
+    });
+
+    console.log(`🎙️ Wannie đã vào voice: ${channel.name}`);
+
+    await entersState(
+      connection,
+      VoiceConnectionStatus.Ready,
+      30_000
+    );
+
+    console.log("✅ Voice 247 đã kết nối!");
+
+    connection.on(
+      VoiceConnectionStatus.Disconnected,
+      async () => {
+        console.log(
+          "⚠️ Wannie bị disconnect khỏi voice, đang reconnect..."
+        );
+
+        try {
+          await Promise.race([
+            entersState(
+              connection,
+              VoiceConnectionStatus.Signalling,
+              5_000
+            ),
+            entersState(
+              connection,
+              VoiceConnectionStatus.Connecting,
+              5_000
+            )
+          ]);
+
+          console.log("🔄 Đang reconnect voice...");
+        } catch {
+          console.log("❌ Reconnect thất bại, đang join lại...");
+
+          try {
+            connection.destroy();
+          } catch {}
+
+          setTimeout(() => {
+            connectTo247Voice();
+          }, 5_000);
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error("❌ Lỗi Voice 247:", error);
+
+    setTimeout(() => {
+      connectTo247Voice();
+    }, 10_000);
+  }
+}
 
 // ================= DAILY BOX REMINDER FUNCTION =================
 async function sendDailyBoxReminder() {
@@ -215,6 +292,8 @@ client.on("messageCreate", async (message) => {
 client.once("ready", async () => {
   console.log(`🤖 ${client.user.tag} đã online!`);
 
+  // Tự động vào phòng voice 247
+  await connectTo247Voice();
 
   // Kiểm tra reminder mỗi phút
   setInterval(sendDailyBoxReminder, 60 * 1000);
