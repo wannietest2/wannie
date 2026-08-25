@@ -67,21 +67,37 @@ const client = new Client({
 });
 
 // ================= VOICE 247 =================
+let voice247Connection = null;
+let reconnecting247 = false;
+
 async function connectTo247Voice() {
+  if (reconnecting247) return;
+  reconnecting247 = true;
+
   try {
     const channel = await client.channels.fetch(VOICE_CHANNEL_ID);
 
     if (!channel) {
       console.log("❌ Không tìm thấy voice channel!");
+      reconnecting247 = false;
       return;
     }
 
     if (!channel.isVoiceBased()) {
       console.log("❌ ID này không phải voice channel!");
+      reconnecting247 = false;
       return;
     }
 
-    const connection = joinVoiceChannel({
+    // Nếu connection cũ còn tồn tại thì hủy
+    if (voice247Connection) {
+      try {
+        voice247Connection.destroy();
+      } catch {}
+      voice247Connection = null;
+    }
+
+    voice247Connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
       adapterCreator: channel.guild.voiceAdapterCreator,
@@ -89,54 +105,57 @@ async function connectTo247Voice() {
       selfMute: true
     });
 
-    console.log(`🎙️ Wannie đã vào voice: ${channel.name}`);
+    console.log(`🎙️ Wannie đang vào voice: ${channel.name}`);
 
     await entersState(
-      connection,
+      voice247Connection,
       VoiceConnectionStatus.Ready,
       30_000
     );
 
     console.log("✅ Voice 247 đã kết nối!");
 
-    connection.on(
+    // ================= DISCONNECT =================
+    voice247Connection.on(
       VoiceConnectionStatus.Disconnected,
       async () => {
-        console.log(
-          "⚠️ Wannie bị disconnect khỏi voice, đang reconnect..."
-        );
+        console.log("⚠️ Wannie bị disconnect khỏi voice!");
+
+        // Đợi một chút rồi join lại
+        if (reconnecting247) return;
+
+        reconnecting247 = true;
 
         try {
-          await Promise.race([
-            entersState(
-              connection,
-              VoiceConnectionStatus.Signalling,
-              5_000
-            ),
-            entersState(
-              connection,
-              VoiceConnectionStatus.Connecting,
-              5_000
-            )
-          ]);
+          voice247Connection.destroy();
+        } catch {}
 
-          console.log("🔄 Đang reconnect voice...");
-        } catch {
-          console.log("❌ Reconnect thất bại, đang join lại...");
+        voice247Connection = null;
 
-          try {
-            connection.destroy();
-          } catch {}
+        console.log("🔄 Đang reconnect Voice 247...");
 
-          setTimeout(() => {
-            connectTo247Voice();
-          }, 5_000);
-        }
+        setTimeout(async () => {
+          reconnecting247 = false;
+          await connectTo247Voice();
+        }, 5_000);
       }
     );
 
+    reconnecting247 = false;
+
   } catch (error) {
     console.error("❌ Lỗi Voice 247:", error);
+
+    try {
+      if (voice247Connection) {
+        voice247Connection.destroy();
+      }
+    } catch {}
+
+    voice247Connection = null;
+    reconnecting247 = false;
+
+    console.log("🔄 Sẽ thử kết nối lại sau 10 giây...");
 
     setTimeout(() => {
       connectTo247Voice();
