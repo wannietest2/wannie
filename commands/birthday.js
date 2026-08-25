@@ -15,7 +15,14 @@ module.exports = async function birthdayCommand(message) {
 Mong rằng bạn sẽ gặp thật nhiều may mắn, công việc thuận lợi cũng như up R99 ầm ầm >^<
 Chúc bạn có một ngày sinh nhật thật vui nhóooo ✨
 
-From Wannie, with love <3`;
+From Wannie, with love <3
 
-  return message.channel.send(birthdayMessage);
+${member}`;
+
+  return message.channel.send({
+    content: birthdayMessage,
+    allowedMentions: {
+      users: [member.id]
+    }
+  });
 };
