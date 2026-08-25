@@ -215,8 +215,6 @@ client.on("messageCreate", async (message) => {
 client.once("ready", async () => {
   console.log(`🤖 ${client.user.tag} đã online!`);
 
-  // Tự động vào phòng voice 247
-  await connectTo247Voice();
 
   // Kiểm tra reminder mỗi phút
   setInterval(sendDailyBoxReminder, 60 * 1000);
